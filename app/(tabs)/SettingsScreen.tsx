@@ -23,6 +23,20 @@ import { ThemeContext } from "../../contexts/ThemeContext";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { API_BASE_URL } from "@/config/apiConfig";
+import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
+
+// avatar ID -> image source mapping
+const AVATAR_IMAGES: Record<string, any> = {
+  avatar1: require("../../assets/images/avatar/avatar1.png"),
+  avatar2: require("../../assets/images/avatar/avatar2.png"),
+  avatar3: require("../../assets/images/avatar/avatar3.png"),
+  avatar4: require("../../assets/images/avatar/avatar4.png"),
+  avatar5: require("../../assets/images/avatar/avatar5.png"),
+  avatar6: require("../../assets/images/avatar/avatar6.png"),
+  avatar7: require("../../assets/images/avatar/avatar7.png"),
+  avatar8: require("../../assets/images/avatar/avatar8.png"),
+  defaultAvatar: require("../../assets/images/avatar/1.jpeg"),
+};
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -34,7 +48,9 @@ export default function SettingsScreen() {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   // Invitations states
-  const [invitations, setInvitations] = useState<{ id: number; [key: string]: any }[]>([]);
+  const [invitations, setInvitations] = useState<
+    { id: number; [key: string]: any }[]
+  >([]);
   const [showInvitationsModal, setShowInvitationsModal] = useState(false);
   const [loadingInvitations, setLoadingInvitations] = useState(false);
   const [processingInvitation, setProcessingInvitation] = useState(false);
@@ -72,18 +88,22 @@ export default function SettingsScreen() {
   const fetchInvitations = async () => {
     setLoadingInvitations(true);
     try {
-      const token = await AsyncStorage.getItem("accessToken") || 
-                    await AsyncStorage.getItem("authToken") || 
-                    await AsyncStorage.getItem("token");
-      
+      const token =
+        (await AsyncStorage.getItem("accessToken")) ||
+        (await AsyncStorage.getItem("authToken")) ||
+        (await AsyncStorage.getItem("token"));
+
       if (!token) {
         console.error("No authentication token found");
-        Alert.alert("Error", "You are not logged in. Please log in and try again.");
+        Alert.alert(
+          "Error",
+          "You are not logged in. Please log in and try again."
+        );
         return;
       }
-  
+
       console.log("Fetching invitations with auth token");
-  
+
       const invitationsResponse = await axios.get(
         `${API_BASE_URL}/api/Invitation/byUserId`,
         {
@@ -92,35 +112,37 @@ export default function SettingsScreen() {
           },
         }
       );
-  
+
       if (invitationsResponse.status === 200) {
         console.log("Fetched raw invitations:", invitationsResponse.data);
-  
+
         const enhancedInvitations = await Promise.all(
           invitationsResponse.data.map(async (invitation: any) => {
             const enhancedInvitation = { ...invitation };
-  
+
             try {
               // Fetch chatroom details
               const chatroomResponse = await axios.get(
                 `${API_BASE_URL}/api/chatroom/${invitation.chatRoomId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
               );
-  
+
               if (chatroomResponse.status === 200) {
-                enhancedInvitation.chatRoomName = chatroomResponse.data.name || "Chat Group";
+                enhancedInvitation.chatRoomName =
+                  chatroomResponse.data.name || "Chat Group";
               }
-  
+
               // Fetch sender details
               const senderResponse = await axios.get(
                 `${API_BASE_URL}/api/users/${invitation.senderId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
               );
-  
+
               if (senderResponse.status === 200) {
-                enhancedInvitation.senderName = senderResponse.data.username || "Unknown";
+                enhancedInvitation.senderName =
+                  senderResponse.data.username || "Unknown";
               }
-  
+
               return enhancedInvitation;
             } catch (error) {
               console.log("Error enhancing invitation data:", error);
@@ -128,7 +150,7 @@ export default function SettingsScreen() {
             }
           })
         );
-  
+
         console.log("Enhanced invitations with names:", enhancedInvitations);
         setInvitations(enhancedInvitations);
       }
@@ -142,7 +164,10 @@ export default function SettingsScreen() {
           Alert.alert("Error", "Unauthorized. Please log in again.");
         } else {
           console.error("Error fetching invitations:", error);
-          Alert.alert("Error", "Failed to load invitations. Please try again later.");
+          Alert.alert(
+            "Error",
+            "Failed to load invitations. Please try again later."
+          );
         }
       } else {
         console.error("Unexpected error fetching invitations:", error);
@@ -156,10 +181,11 @@ export default function SettingsScreen() {
   const acceptInvitation = async (invitationId: number) => {
     setProcessingInvitation(true);
     try {
-      const token = await AsyncStorage.getItem("accessToken") || 
-                    await AsyncStorage.getItem("authToken") || 
-                    await AsyncStorage.getItem("token");
-      
+      const token =
+        (await AsyncStorage.getItem("accessToken")) ||
+        (await AsyncStorage.getItem("authToken")) ||
+        (await AsyncStorage.getItem("token"));
+
       if (!token) {
         console.error("No authentication token found");
         return;
@@ -177,7 +203,7 @@ export default function SettingsScreen() {
 
       if (response.status === 200 || response.status === 204) {
         Alert.alert("Success", "Invitation accepted successfully!");
-        setInvitations(invitations.filter(inv => inv.id !== invitationId));
+        setInvitations(invitations.filter((inv) => inv.id !== invitationId));
       }
     } catch (error) {
       console.error("Error accepting invitation:", error);
@@ -190,10 +216,11 @@ export default function SettingsScreen() {
   const declineInvitation = async (invitationId: number) => {
     setProcessingInvitation(true);
     try {
-      const token = await AsyncStorage.getItem("accessToken") || 
-                    await AsyncStorage.getItem("authToken") || 
-                    await AsyncStorage.getItem("token");
-      
+      const token =
+        (await AsyncStorage.getItem("accessToken")) ||
+        (await AsyncStorage.getItem("authToken")) ||
+        (await AsyncStorage.getItem("token"));
+
       if (!token) {
         console.error("No authentication token found");
         return;
@@ -210,7 +237,7 @@ export default function SettingsScreen() {
 
       if (response.status === 200 || response.status === 204) {
         Alert.alert("Success", "Invitation declined successfully.");
-        setInvitations(invitations.filter(inv => inv.id !== invitationId));
+        setInvitations(invitations.filter((inv) => inv.id !== invitationId));
       }
     } catch (error) {
       console.error("Error declining invitation:", error);
@@ -300,6 +327,17 @@ export default function SettingsScreen() {
     setShowInvitationsModal(true);
   };
 
+  const getAvatarSource = () => {
+    const key = authUser?.profilePicture;
+
+    if (key && AVATAR_IMAGES[key]) {
+      return AVATAR_IMAGES[key];
+    }
+
+    // Default avatar
+    return AVATAR_IMAGES["defaultAvatar"];
+  };
+
   return (
     <SafeAreaView style={[styles.container, darkMode && styles.darkContainer]}>
       <Text style={[styles.header, darkMode && styles.darkText]}>Settings</Text>
@@ -308,7 +346,8 @@ export default function SettingsScreen() {
         <View style={styles.profileSection}>
           <TouchableOpacity onPress={() => router.push("/AvatarScreen")}>
             <Image
-              source={{ uri: `${API_BASE_URL}${authUser?.profilePicture}` }}
+              source={getAvatarSource()}
+              // source={{ uri: "https://picsum.photos/200" }}
               style={styles.profileImage}
             />
             <View style={styles.cameraIconContainer}>
@@ -488,10 +527,10 @@ export default function SettingsScreen() {
               </View>
             ) : invitations.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons 
-                  name="mail-outline" 
-                  size={50} 
-                  color={darkMode ? "#666" : "#ccc"} 
+                <Ionicons
+                  name="mail-outline"
+                  size={50}
+                  color={darkMode ? "#666" : "#ccc"}
                 />
                 <Text style={[styles.emptyText, darkMode && styles.darkText]}>
                   No invitations found
@@ -509,10 +548,20 @@ export default function SettingsScreen() {
                     ]}
                   >
                     <View style={styles.invitationInfo}>
-                      <Text style={[styles.invitationTitle, darkMode && styles.darkText]}>
+                      <Text
+                        style={[
+                          styles.invitationTitle,
+                          darkMode && styles.darkText,
+                        ]}
+                      >
                         {item.chatRoomName || "Chat Group"}
                       </Text>
-                      <Text style={[styles.invitationSender, darkMode && styles.darkTextSecondary]}>
+                      <Text
+                        style={[
+                          styles.invitationSender,
+                          darkMode && styles.darkTextSecondary,
+                        ]}
+                      >
                         From: {item.senderName || "Unknown"}
                       </Text>
                     </View>
@@ -815,7 +864,7 @@ const styles = StyleSheet.create({
   darkCloseButtonText: {
     color: "#fff",
   },
-  
+
   // Invitation styles
   invitationItem: {
     backgroundColor: "#f8f8f8",
