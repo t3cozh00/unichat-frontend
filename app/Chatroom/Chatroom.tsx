@@ -261,7 +261,10 @@ export default function Chatroom() {
 
           // Don't add your own messages twice (they're already added optimistically)
           if (message.senderId !== currentUserId) {
-            console.log("Adding message from other user:", message.sender?.username);
+            console.log(
+              "Adding message from other user:",
+              message.sender?.username
+            );
 
             const formattedMessage = {
               id: message.id.toString(),
@@ -269,14 +272,14 @@ export default function Chatroom() {
               time: new Date(message.sentAt).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
-                hour12: true
+                hour12: true,
               }),
               senderId: message.senderId,
-              senderUsername: message.sender?.username || "Unknown"
+              senderUsername: message.sender?.username || "Unknown",
             };
 
             // Add the new message to the list
-            setMessages(prevMessages => [formattedMessage, ...prevMessages]);
+            setMessages((prevMessages) => [formattedMessage, ...prevMessages]);
           }
         });
 
@@ -302,7 +305,6 @@ export default function Chatroom() {
             console.error("Error joining room:", joinErr);
           }
         }
-
       } catch (error) {
         console.error("SignalR connection setup failed:", error);
       }
@@ -404,6 +406,15 @@ export default function Chatroom() {
   const fetchChatroomInfo = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/chatroom/${roomId}`);
+
+      if (!response.ok) {
+        console.error(
+          "Failed to fetch chatroom info, status:",
+          response.status
+        );
+        return;
+      }
+
       const data = await response.json();
 
       console.log("Chatroom info:", data);
@@ -411,12 +422,15 @@ export default function Chatroom() {
 
       setTitleState(data.name || "");
       setDescription(data.description);
-      setMembers(data.members);
+      const safeMembers = Array.isArray(data.members) ? data.members : [];
+      const safeMessages = Array.isArray(data.messages) ? data.messages : [];
+
+      setMembers(safeMembers);
 
       // Update the messages state with the fetched messages, sorted by sentAt in descending order
-      const formattedMessages = data.messages
+      const formattedMessages = safeMessages
         .map((message: any) => {
-          const sender = data.members.find(
+          const sender = safeMembers.find(
             (member: any) => member.id === message.senderId
           );
           return {
@@ -641,15 +655,28 @@ export default function Chatroom() {
         }
       >
         <View style={[styles.header, darkMode && styles.darkHeader]}>
-          <TouchableOpacity
-            onPress={EnterChatPage}
-            style={styles.headerTitleSection}
-          >
-            <Image source={{ uri: icon }} style={styles.icon} />
-            <Text style={[styles.title, darkMode && styles.darkText]}>
-              {titleState}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={darkMode ? "#fff" : "#000"}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={EnterChatPage}
+              style={styles.headerTitleSection}
+            >
+              <Image source={{ uri: icon }} style={styles.icon} />
+              <Text style={[styles.title, darkMode && styles.darkText]}>
+                {titleState}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.Header_Right}>
             <TouchableOpacity
@@ -889,6 +916,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  backButton: {
+    paddingRight: 8,
+    paddingVertical: 4,
+    marginRight: 4,
+  },
+
   Header_Right: {
     flexDirection: "row",
     alignItems: "center",
