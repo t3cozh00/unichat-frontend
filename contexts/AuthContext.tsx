@@ -51,23 +51,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const loadUser = async () => {
-      const accessToken = await AsyncStorage.getItem("accessToken");
-      const refreshToken = await AsyncStorage.getItem("refreshToken");
-
-      if (!accessToken || !refreshToken) {
-        console.log("No tokens found, user not logged in.");
-        return;
-      }
-
       try {
-        const profileRes = await fetchUserProfile(accessToken);
-        setUser(profileRes.data);
-      } catch (error) {
-        console.error(
-          "Access token invalid or expired. Attempting to refresh..."
-        );
+        const accessToken = await AsyncStorage.getItem("accessToken");
+        const refreshToken = await AsyncStorage.getItem("refreshToken");
 
-        try {
+        // 1) if no tokens, just return
+        if (!accessToken && !refreshToken) {
+          console.log("No tokens found, user not logged in.");
+          return;
+        }
+
+        // 2) if accessToken exists, try to fetch user profile
+        if (accessToken) {
+          try {
+            const profileRes = await fetchUserProfile(accessToken);
+            setUser(profileRes.data);
+            console.log("Loaded user with existing access token.");
+            return;
+          } catch (err) {
+            console.warn(
+              "Stored access token invalid, will try refresh with refreshToken..."
+            );
+          }
+        }
+
+        // 3) if accessToken is invalid, try to refresh with refreshToken
+        if (refreshToken) {
           const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
             method: "POST",
             headers: {
@@ -82,14 +91,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             const profileRes = await fetchUserProfile(newAccessToken);
             setUser(profileRes.data);
+            console.log("Loaded user after refreshing access token.");
           } else {
-            console.error("Failed to refresh token. Logging out...");
-            logout();
+            // 4) if refresh also fails, clear storage and stay logged out
+            console.warn("Refresh token invalid, clearing stored tokens.");
+            await AsyncStorage.multiRemove([
+              "accessToken",
+              "refreshToken",
+              "user",
+              "userData",
+            ]);
+            setUser(null);
           }
-        } catch (refreshError) {
-          console.error("Error refreshing token:", refreshError);
-          logout();
         }
+      } catch (error) {
+        console.error("Error loading user on app start:", error);
+        // In case of any error, ensure user is logged out
       }
     };
 
@@ -174,24 +191,58 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Update user profile
+  // const updateUser = async (updatedUserData: Partial<User>) => {
+  //   try {
+  //     const accessToken = await AsyncStorage.getItem("accessToken");
+  //     if (!accessToken || !user?.id) throw new Error("Missing auth info");
+
+  //     const response = await updateUserProfile(
+  //       user.id,
+  //       updatedUserData,
+  //       accessToken
+  //     );
+
+  //     console.log("Updated user from backend:", response.data);
+
+  //     setUser(response.data);
+  //     await AsyncStorage.setItem("user", JSON.stringify(response.data));
+  //     await AsyncStorage.setItem("userData", JSON.stringify(response.data));
+  //   } catch (error) {
+  //     console.error("Update failed:", error);
+  //   }
+  // };
   const updateUser = async (updatedUserData: Partial<User>) => {
     try {
       const accessToken = await AsyncStorage.getItem("accessToken");
       if (!accessToken || !user?.id) throw new Error("Missing auth info");
 
-      const response = await updateUserProfile(
-        user.id,
-        updatedUserData,
-        accessToken
+      // Merge existing user data with updates
+      const payload: Partial<User> = {
+        ...user,
+        ...updatedUserData,
+      };
+
+      const response = await updateUserProfile(user.id, payload, accessToken);
+
+      console.log(
+        "updateUserProfile success flag from backend:",
+        response.data
       );
 
-      console.log("Updated user from backend:", response.data);
+      // build new user object in frontend
+      const updatedUser: User = {
+        ...(user as User),
+        ...updatedUserData,
+      };
+      console.log("Updated user (frontend merged object):", updatedUser);
+      setUser(updatedUser);
 
-      setUser(response.data);
-      await AsyncStorage.setItem("user", JSON.stringify(response.data));
-      await AsyncStorage.setItem("userData", JSON.stringify(response.data));
+      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+      await AsyncStorage.setItem("userData", JSON.stringify(updatedUser));
     } catch (error) {
-      console.error("Update failed:", error);
+      console.error("Update failed in AuthContext.updateUser:", error);
+      // ❗ important: re-throw the error make sure AvatarScreen can catch it
+      throw error;
     }
   };
 

@@ -1,9 +1,19 @@
 import React, { useContext } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AuthContext } from "@/contexts/AuthContext";
-import { API_BASE_URL } from "@/config/apiConfig";
+
+const AVATAR_IMAGES: Record<string, any> = {
+  avatar1: require("../assets/images/avatar/avatar1.png"),
+  avatar2: require("../assets/images/avatar/avatar2.png"),
+  avatar3: require("../assets/images/avatar/avatar3.png"),
+  avatar4: require("../assets/images/avatar/avatar4.png"),
+  avatar5: require("../assets/images/avatar/avatar5.png"),
+  avatar6: require("../assets/images/avatar/avatar6.png"),
+  avatar7: require("../assets/images/avatar/avatar7.png"),
+  avatar8: require("../assets/images/avatar/avatar8.png"),
+  defaultAvatar: require("../assets/images/avatar/1.jpeg"),
+};
 
 interface HeaderProps {
   username: string;
@@ -12,29 +22,35 @@ interface HeaderProps {
   hasUnreadNotifications?: boolean;
 }
 
-export default function Header({
-  username,
-  avatar,
-  darkMode,
-  hasUnreadNotifications,
-}: HeaderProps) {
+export default function Header({ username, avatar, darkMode }: HeaderProps) {
   const router = useRouter();
   const { user: authUser } = useContext(AuthContext);
 
-  // const handleNotificationPress = () => {
-  //   router.push("/NotificationScreen");
-  // };
+  const getAvatarSource = () => {
+    // 1) if avatar is a string and matches an avatar ID
+    if (typeof avatar === "string" && AVATAR_IMAGES[avatar]) {
+      return AVATAR_IMAGES[avatar];
+    }
+
+    // 2) otherwise use the current logged-in user's profilePicture (avatar1/2/...)
+    const key = authUser?.profilePicture;
+
+    if (key && typeof key === "string" && AVATAR_IMAGES[key]) {
+      return AVATAR_IMAGES[key];
+    }
+
+    // 3) if avatar is already an image source
+    if (avatar && typeof avatar !== "string") {
+      return avatar;
+    }
+
+    return AVATAR_IMAGES["defaultAvatar"];
+  };
+
   return (
     <View style={[styles.container, darkMode && styles.darkContainer]}>
       <View style={styles.userInfo}>
-        <Image
-          source={
-            typeof avatar === "string"
-              ? { uri: `${API_BASE_URL}${authUser?.profilePicture}` }
-              : avatar
-          }
-          style={styles.avatar}
-        />
+        <Image source={getAvatarSource()} style={styles.avatar} />
         <Text style={[styles.username, darkMode && styles.darkText]}>
           Welcome, {username}
         </Text>

@@ -1,4 +1,5 @@
 import axiosInstance from "@/utils/axiosInstance";
+import axios from "axios";
 
 const API_URL_REG = "/api/users";
 const API_URL_LOG = "/auth";
@@ -61,6 +62,25 @@ export const fetchUserProfile = async (accessToken: string): Promise<any> => {
   });
 };
 
+// export const updateUserProfile = async (
+//   userId: number,
+//   updatedData: {
+//     username?: string;
+//     email?: string;
+//     passwordHash?: string;
+//     semester?: number;
+//     study?: string;
+//     profilePicture?: string;
+//   },
+//   accessToken: string
+// ): Promise<any> => {
+//   return axiosInstance.patch(`${API_URL_REG}/${userId}`, updatedData, {
+//     headers: {
+//       Authorization: `Bearer ${accessToken}`,
+//     },
+//   });
+// };
+
 export const updateUserProfile = async (
   userId: number,
   updatedData: {
@@ -73,11 +93,28 @@ export const updateUserProfile = async (
   },
   accessToken: string
 ): Promise<any> => {
-  return axiosInstance.patch(`${API_URL_REG}/${userId}`, updatedData, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  try {
+    const res = await axiosInstance.put(
+      `${API_URL_REG}/${userId}`,
+      updatedData,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    console.log("updateUserProfile success:", res.data);
+    return res;
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      console.log("updateUserProfile error status:", error.response?.status);
+      console.log("updateUserProfile error data:", error.response?.data);
+    } else {
+      console.log("updateUserProfile unknown error:", error);
+    }
+    throw error;
+  }
 };
 
 // Test connection function to debug connectivity issues

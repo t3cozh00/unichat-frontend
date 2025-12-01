@@ -22,34 +22,47 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/config/apiConfig";
 
+const AVATAR_IMAGES: Record<string, any> = {
+  avatar1: require("../assets/images/avatar/avatar1.png"),
+  avatar2: require("../assets/images/avatar/avatar2.png"),
+  avatar3: require("../assets/images/avatar/avatar3.png"),
+  avatar4: require("../assets/images/avatar/avatar4.png"),
+  avatar5: require("../assets/images/avatar/avatar5.png"),
+  avatar6: require("../assets/images/avatar/avatar6.png"),
+  avatar7: require("../assets/images/avatar/avatar7.png"),
+  avatar8: require("../assets/images/avatar/avatar8.png"),
+  defaultAvatar: require("../assets/images/avatar/1.jpeg"),
+};
+const DEFAULT_AVATAR_SOURCE = AVATAR_IMAGES["defaultAvatar"];
+
 // Helper function for cross-platform toast messages
 const showToast = (message: string) => {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     // For web, create a custom visual toast since native ones don't work
-    const toastDiv = document.createElement('div');
-    toastDiv.style.position = 'fixed';
-    toastDiv.style.bottom = '20px';
-    toastDiv.style.left = '50%';
-    toastDiv.style.transform = 'translateX(-50%)';
-    toastDiv.style.backgroundColor = '#333';
-    toastDiv.style.color = 'white';
-    toastDiv.style.padding = '10px 20px';
-    toastDiv.style.borderRadius = '5px';
-    toastDiv.style.zIndex = '1000';
+    const toastDiv = document.createElement("div");
+    toastDiv.style.position = "fixed";
+    toastDiv.style.bottom = "20px";
+    toastDiv.style.left = "50%";
+    toastDiv.style.transform = "translateX(-50%)";
+    toastDiv.style.backgroundColor = "#333";
+    toastDiv.style.color = "white";
+    toastDiv.style.padding = "10px 20px";
+    toastDiv.style.borderRadius = "5px";
+    toastDiv.style.zIndex = "1000";
     toastDiv.textContent = message;
-    
+
     document.body.appendChild(toastDiv);
-    
+
     setTimeout(() => {
       document.body.removeChild(toastDiv);
     }, 3000);
-  } else if (Platform.OS === 'android') {
+  } else if (Platform.OS === "android") {
     ToastAndroid.show(message, ToastAndroid.SHORT);
   } else {
     // For iOS or other platforms
     Alert.alert("", message);
   }
-  
+
   // Also console log for debugging
   console.log("TOAST:", message);
 };
@@ -64,9 +77,6 @@ export default function GroupChatPage() {
     description: initialDescription,
   }: any = useLocalSearchParams();
   const { darkMode } = useContext(ThemeContext);
-
-  const defaultAvatar =
-    "https://img.freepik.com/premium-vector/man-avatar-profile-picture-isolated-background-avatar-profile-picture-man_1293239-4867.jpg";
 
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,7 +94,31 @@ export default function GroupChatPage() {
 
   useEffect(() => {
     fetchMembers();
+    fetchChatRoomInfo();
   }, [roomId]);
+
+  const fetchChatRoomInfo = async () => {
+    if (!roomId) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/ChatRoom/${roomId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch chatroom: ${response.status}`);
+      }
+      const data = await response.json();
+
+      if (data.name) {
+        setTitle(data.name);
+        setEditTitle(data.name);
+      }
+      if (data.description) {
+        setDescription(data.description);
+        setEditDescription(data.description);
+      }
+    } catch (error) {
+      console.error("Error fetching chatroom info:", error);
+    }
+  };
 
   const fetchMembers = async () => {
     if (!roomId) {
@@ -95,35 +129,28 @@ export default function GroupChatPage() {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/chatroom/${roomId}`);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch chatroom: ${response.status}`);
-      }
+      const token =
+        (await AsyncStorage.getItem("accessToken")) ||
+        (await AsyncStorage.getItem("authToken")) ||
+        (await AsyncStorage.getItem("token"));
 
-      const data = await response.json();
+      const response = await axios.get(
+        `${API_BASE_URL}/api/ChatRoom/${roomId}/members`,
+        token
+          ? {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          : undefined
+      );
 
-      if (data && data.members) {
-        console.log("GroupChatPage: Found members:", data.members);
-        setMembers(data.members);
-
-        // Update title and description from the API response if available
-        if (data.name) {
-          setTitle(data.name);
-          setEditTitle(data.name);
-        }
-        if (data.description) {
-          setDescription(data.description);
-          setEditDescription(data.description);
-        }
-      } else {
-        console.warn(
-          "GroupChatPage: No members found or unexpected data format"
-        );
-        setMembers([]);
-      }
+      console.log("GroupChatPage: members from API:", response.data);
+      setMembers(response.data);
     } catch (error) {
       console.error("Error fetching chatroom members:", error);
+      setMembers([]);
     } finally {
       setLoading(false);
     }
@@ -137,17 +164,16 @@ export default function GroupChatPage() {
     }
 
     try {
+      const token =
+        (await AsyncStorage.getItem("accessToken")) ||
+        (await AsyncStorage.getItem("authToken")) ||
+        (await AsyncStorage.getItem("token"));
 
-      const token = await AsyncStorage.getItem("accessToken") || 
-                   await AsyncStorage.getItem("authToken") || 
-                   await AsyncStorage.getItem("token");
-      
       if (!token) {
         console.error("No auth token found");
         showToast("You need to be logged in");
         return;
       }
-      
 
       if (!authUser || !authUser.id) {
         console.error("No user found in AuthContext");
@@ -156,28 +182,26 @@ export default function GroupChatPage() {
       }
 
       const userId = authUser.id;
-      
 
       const response = await axios.delete(
         `${API_BASE_URL}/api/chatroom/${roomId}/users/${userId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-          }
+          },
         }
       );
-      
+
       console.log(`User removed from room in database: ${response.status}`);
-      
 
       await connection.invoke("LeaveRoom", parseInt(roomId));
       console.log(`Left room ${roomId}`);
-      
+
       showToast("Left the group successfully");
-      
+
       // Navigate back to the chatrooms list
       router.push({
-        pathname: "/", 
+        pathname: "/",
       });
     } catch (err) {
       console.error("Error leaving room:", err);
@@ -192,20 +216,21 @@ export default function GroupChatPage() {
 
   const handleSendInvite = async () => {
     console.log("Starting invitation process for input:", inviteInput);
-    
+
     if (!inviteInput.trim()) {
       console.log("Empty input detected");
       showToast("Please enter a username");
       return;
     }
-    
+
     setInviteLoading(true);
     try {
       console.log("Getting auth token...");
-      const token = await AsyncStorage.getItem("accessToken") || 
-                   await AsyncStorage.getItem("authToken") || 
-                   await AsyncStorage.getItem("token");
-      
+      const token =
+        (await AsyncStorage.getItem("accessToken")) ||
+        (await AsyncStorage.getItem("authToken")) ||
+        (await AsyncStorage.getItem("token"));
+
       if (!token) {
         console.log("No auth token found");
         showToast("You need to be logged in");
@@ -213,59 +238,64 @@ export default function GroupChatPage() {
         return;
       }
       console.log("Auth token retrieved successfully");
-  
+
       // First find the user by exact username
       try {
         console.log(`Making API call to search for user: ${inviteInput}`);
-        console.log(`Request URL: ${API_BASE_URL}/api/users?search=${encodeURIComponent(inviteInput)}`);
-        
+        console.log(
+          `Request URL: ${API_BASE_URL}/api/users?search=${encodeURIComponent(
+            inviteInput
+          )}`
+        );
+
         const usersResponse = await axios.get(
           `${API_BASE_URL}/api/users?search=${encodeURIComponent(inviteInput)}`,
           {
             headers: {
-              Authorization: `Bearer ${token}`
-            }
+              Authorization: `Bearer ${token}`,
+            },
           }
         );
-        
+
         console.log("Users search API response status:", usersResponse.status);
         console.log("Users found:", usersResponse.data.length);
-        
+
         // Find the exact username match
         const exactMatch = usersResponse.data.find(
-          (user: any) => user.username.toLowerCase() === inviteInput.toLowerCase()
+          (user: any) =>
+            user.username.toLowerCase() === inviteInput.toLowerCase()
         );
-        
+
         if (!exactMatch) {
           console.log("No exact match found for username:", inviteInput);
           showToast("User not found");
           setInviteLoading(false);
           return;
         }
-        
+
         // Check if user is already a member
         console.log("Checking if user is already a member...");
-        
-        const isMember = members.some(member => member.id === exactMatch.id);
+
+        const isMember = members.some((member) => member.id === exactMatch.id);
         if (isMember) {
           console.log("User is already a member of this group");
           showToast("User is already a member of this group");
           setInviteLoading(false);
           return;
         }
-        
+
         // Send invitation using the found user ID
         try {
           console.log("Sending invitation with payload:", {
             ReceiverId: exactMatch.id,
-            ChatRoomId: parseInt(roomId)
+            ChatRoomId: parseInt(roomId),
           });
-          
+
           const response = await axios.post(
             `${API_BASE_URL}/api/Invitation`,
             {
               ReceiverId: exactMatch.id,
-              ChatRoomId: parseInt(roomId)
+              ChatRoomId: parseInt(roomId),
             },
             {
               headers: {
@@ -274,23 +304,31 @@ export default function GroupChatPage() {
               },
             }
           );
-          
-          console.log("Invitation API response:", response.status, response.data);
+
+          console.log(
+            "Invitation API response:",
+            response.status,
+            response.data
+          );
           showToast("Invitation sent successfully");
           setInviteModalVisible(false);
           setInviteInput("");
         } catch (error: any) {
           console.error("Invitation error:", error);
-          
+
           if (error.response) {
             if (error.response.status === 409) {
-              console.log("409 Conflict: Invitation already exists or user is already a member");
-              showToast("Invitation already exists or user is already a member");
+              console.log(
+                "409 Conflict: Invitation already exists or user is already a member"
+              );
+              showToast(
+                "Invitation already exists or user is already a member"
+              );
             } else if (error.response.status === 400) {
               console.log("400 Bad Request:", error.response.data);
               showToast(
-                typeof error.response.data === 'string' 
-                  ? error.response.data 
+                typeof error.response.data === "string"
+                  ? error.response.data
                   : "Invalid invitation request"
               );
             } else {
@@ -380,59 +418,120 @@ export default function GroupChatPage() {
   const visibleMembersCount = 8;
   const hasMoreMembers = members.length > visibleMembersCount;
 
+  const getMemberAvatarSource = (member: any) => {
+    const key = member?.profilePicture;
+
+    // 1) if the profilePicture is a full URL, use it directly
+    if (key && typeof key === "string" && key.startsWith("http")) {
+      return { uri: key };
+    }
+
+    // 2) if it's a predefined avatar ID (avatar1 ~ avatar8)
+    if (key && typeof key === "string" && AVATAR_IMAGES[key]) {
+      return AVATAR_IMAGES[key];
+    }
+
+    // 3) if no avatar is set, use the default avatar
+    return DEFAULT_AVATAR_SOURCE;
+  };
+
   return (
     <View style={[styles.container, darkMode && styles.darkContainer]}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={[styles.header, darkMode && styles.darkHeader]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={24} color={darkMode ? "white" : "black"} />
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={darkMode ? "white" : "black"}
+              />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, darkMode && styles.darkText]}>Group Info</Text>
-            <TouchableOpacity onPress={HandleEditPress} style={styles.editButton}>
-              <Text style={[styles.edit, darkMode && styles.darkEdit]}>Edit</Text>
+            <Text style={[styles.headerTitle, darkMode && styles.darkText]}>
+              Group Info
+            </Text>
+            <TouchableOpacity
+              onPress={HandleEditPress}
+              style={styles.editButton}
+            >
+              <Text style={[styles.edit, darkMode && styles.darkEdit]}>
+                Edit
+              </Text>
             </TouchableOpacity>
           </View>
 
           <View style={[styles.infoHeader, darkMode && styles.darkInfoHeader]}>
             <Image source={{ uri: icon }} style={styles.groupIcon} />
-            <Text style={[styles.title, darkMode && styles.darkTitle]}>{title}</Text>
-            <Text style={[styles.description, darkMode && styles.darkDescription]}>{description}</Text>
+            <Text style={[styles.title, darkMode && styles.darkTitle]}>
+              {title}
+            </Text>
+            <Text
+              style={[styles.description, darkMode && styles.darkDescription]}
+            >
+              {description}
+            </Text>
           </View>
 
           <View style={styles.sectionContainer}>
-            <Text style={[styles.membersTitle, darkMode && styles.darkText]}>Members:</Text>
-            <View style={[styles.membersGrid, darkMode && styles.darkMembersGrid]}>
-              {members.slice(0, visibleMembersCount).map((member: any, index: number) => (
-                <View key={index} style={styles.memberItem}>
-                  <Image
-                    source={{
-                      uri: member.profilePicture
-                        ? `${API_BASE_URL}${member.profilePicture}`
-                        : defaultAvatar,
-                    }}
-                    style={styles.memberAvatar}
-                  />
-                  <Text style={[styles.memberUsername, darkMode && styles.darkText]} numberOfLines={1}>
-                    {member.username}
-                  </Text>
-                </View>
-              ))}
+            <Text style={[styles.membersTitle, darkMode && styles.darkText]}>
+              Members:
+            </Text>
+            <View
+              style={[styles.membersGrid, darkMode && styles.darkMembersGrid]}
+            >
+              {members
+                .slice(0, visibleMembersCount)
+                .map((member: any, index: number) => (
+                  <View key={index} style={styles.memberItem}>
+                    <Image
+                      source={getMemberAvatarSource(member)}
+                      style={styles.memberAvatar}
+                    />
+                    <Text
+                      style={[
+                        styles.memberUsername,
+                        darkMode && styles.darkText,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {member.username}
+                    </Text>
+                  </View>
+                ))}
               {hasMoreMembers && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.seeMoreButton}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.moreAvatarPlaceholder, darkMode && { backgroundColor: "#444", borderColor: "#555" }]}>
-                    <Text style={[styles.moreAvatarText, darkMode && { color: "#fff" }]}>
+                  <View
+                    style={[
+                      styles.moreAvatarPlaceholder,
+                      darkMode && {
+                        backgroundColor: "#444",
+                        borderColor: "#555",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.moreAvatarText,
+                        darkMode && { color: "#fff" },
+                      ]}
+                    >
                       +{members.length - visibleMembersCount}
                     </Text>
                   </View>
-                  <Text 
+                  <Text
                     style={[
-                      styles.memberUsername, 
+                      styles.memberUsername,
                       darkMode && styles.darkText,
-                      { fontWeight: "600", color: darkMode ? "#4da6ff" : "#007bff" }
+                      {
+                        fontWeight: "600",
+                        color: darkMode ? "#4da6ff" : "#007bff",
+                      },
                     ]}
                   >
                     See More
@@ -443,7 +542,7 @@ export default function GroupChatPage() {
           </View>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.inviteButton}
               onPress={handleInvitePress}
               activeOpacity={0.8}
@@ -451,7 +550,7 @@ export default function GroupChatPage() {
               <Text style={styles.inviteButtonText}>Invite People</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.leaveButton}
               onPress={HandleLeaveGroup}
               activeOpacity={0.8}
@@ -533,11 +632,11 @@ export default function GroupChatPage() {
             <Text style={[styles.modalTitle, darkMode && styles.darkText]}>
               Invite User
             </Text>
-            
+
             <Text style={[styles.modalLabel, darkMode && styles.darkText]}>
               Enter username
             </Text>
-            
+
             <TextInput
               style={[styles.input, darkMode && styles.darkInput]}
               value={inviteInput}
@@ -546,7 +645,7 @@ export default function GroupChatPage() {
               placeholderTextColor={darkMode ? "#aaa" : "#999"}
               autoCapitalize="none"
             />
-            
+
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={styles.cancelButton}
@@ -557,11 +656,11 @@ export default function GroupChatPage() {
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
-                  styles.saveButton, 
-                  inviteLoading && styles.disabledButton
+                  styles.saveButton,
+                  inviteLoading && styles.disabledButton,
                 ]}
                 onPress={handleSendInvite}
                 disabled={inviteLoading}
@@ -606,7 +705,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    marginTop: Platform.OS === 'android' ? 35 : 0,
+    marginTop: Platform.OS === "android" ? 35 : 0,
   },
   darkHeader: {
     backgroundColor: "#1e1e1e",
@@ -789,7 +888,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
   },
-  
+
   // Modal styles
   modalOverlay: {
     flex: 1,
