@@ -19,13 +19,44 @@ export default function AvatarScreen() {
   const { user: authUser, updateUser } = useContext(AuthContext);
   const { darkMode } = useContext(ThemeContext);
 
-  const avatarOptions = Array.from({ length: 8 }, (_, i) => ({
-    uri: `/avatars/avatar${i + 1}.png`,
-  }));
+  const avatarOptions = [
+    {
+      id: "avatar1",
+      source: require("../assets/images/avatar/avatar1.png"),
+    },
+    {
+      id: "avatar2",
+      source: require("../assets/images/avatar/avatar2.png"),
+    },
+    {
+      id: "avatar3",
+      source: require("../assets/images/avatar/avatar3.png"),
+    },
+    {
+      id: "avatar4",
+      source: require("../assets/images/avatar/avatar4.png"),
+    },
+    {
+      id: "avatar5",
+      source: require("../assets/images/avatar/avatar5.png"),
+    },
+    {
+      id: "avatar6",
+      source: require("../assets/images/avatar/avatar6.png"),
+    },
+    {
+      id: "avatar7",
+      source: require("../assets/images/avatar/avatar7.png"),
+    },
+    {
+      id: "avatar8",
+      source: require("../assets/images/avatar/avatar8.png"),
+    },
+  ];
 
-  const handleAvatarSelect = async (avatarUri: string) => {
+  const handleAvatarSelect = async (avatarId: string) => {
     try {
-      await updateUser({ profilePicture: avatarUri });
+      await updateUser({ profilePicture: avatarId });
       Alert.alert("Success", "Avatar updated successfully!");
       router.back();
     } catch (error) {
@@ -39,16 +70,17 @@ export default function AvatarScreen() {
         Please Choose Your Avatar
       </Text>
       <ScrollView contentContainerStyle={styles.grid}>
-        {avatarOptions.map((avatar, index) => {
-          const isSelected = authUser?.profilePicture === avatar.uri;
+        {avatarOptions.map((avatar) => {
+          const isSelected = authUser?.profilePicture === avatar.id;
           return (
             <TouchableOpacity
-              key={index}
-              onPress={() => handleAvatarSelect(avatar.uri)}
+              key={avatar.id}
+              onPress={() => handleAvatarSelect(avatar.id)}
               style={[styles.avatarBox, isSelected && styles.selectedBorder]}
             >
               <Image
-                source={{ uri: `${API_BASE_URL}${avatar.uri}` }}
+                source={avatar.source}
+                // source={{ uri: "https://picsum.photos/200" }}
                 style={styles.avatarImage}
               />
             </TouchableOpacity>
