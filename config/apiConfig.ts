@@ -18,13 +18,13 @@ const getApiUrl = () => {
   if (__DEV__) {
     if (Platform.OS === "ios") {
       // iOS Simulator shares localhost with your Mac
-      return "http://localhost:5222";
+      return "http://172.20.10.5:5222";
     }
 
     if (Platform.OS === "android") {
       // Android Emulator requires special localhost address
       // For example: http://10.1.177.107:5222
-      return "http://10.0.2.2:5222";
+      return "http://172.20.10.5:5222";
     }
 
     // Web or others
