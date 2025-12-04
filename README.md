@@ -23,7 +23,7 @@ As a whole, the UniChat project aims to provide:
 - Register and log in with the UniChat backend
 - Persist login state on the device
 - Basic validation and feedback for incorrect credentials
-- Reset the password when user has forgotten the previous one
+- Reset the password when user has forgotten their previous one
 
 #### User Profiles & Avatars
 
@@ -139,7 +139,7 @@ UniChat is built as a **full-stack system**: a React Native mobile app (client) 
                  ┣ Hubs/
                  ┣ Properties/
                  ┣ appsettings.json
-                 ┣ Program.cs/
+                 ┣ Program.cs
                  ┗ ...
 
 > This tree shows the overall UniChat solution structure (frontend + backend).
@@ -258,12 +258,15 @@ Make sure you have:
 You will need to configure:
 
 - Backend
+
   - `UniChat-BackEnd/appsettings.json` (or `appsettings.Development.json`)
+
 - Frontend
 
   - e.g. `UniChat-FrontEnd/apiConfig.ts` or `.env` for `API_BASE_URL`
 
 - PostgreSQL (Docker)
+
   - `UniChat_DAL/docker-compose.yml` (or `docker-compose.yml` in the DB folder)
 
 #### 3. Start Backend & Database
