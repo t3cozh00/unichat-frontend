@@ -164,9 +164,7 @@ UniChat is built as a **full-stack system**: a React Native mobile app (client) 
 
 #### 🎥 Demo Video
 
-[▶️ Watch the UniChat demo](#)
-
-<!-- https://youtu.be/6jH2R_F63a8 -->
+[▶️ Watch the UniChat demo](https://youtu.be/6jH2R_F63a8)
 
 #### 🖼 Screenshots
 
